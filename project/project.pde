@@ -7,30 +7,35 @@ Grid g;
 DropdownList d1;
 
 boolean setup = false, running = false;
-int tps = 1;
-long millis = (long) ((float) 1000 / tps);
+int tps = 1000;
+long nanos = (long) ((float) 1000000000 / tps);
 long current_time = 0;
 long lastTime;
 
+long t = 0;
+
 void setup() {
-  size(1024, 512);
+  size(1366, 768);
   
   cp5 = new ControlP5(this);
   
   cp5.addScrollableList("dist_selection")
      .setSize(200, 100)
-     .setPosition(512 + 20, 20)
+     .setPosition(height + 20, 20)
      .setBarHeight(20)
      .setItemHeight(20)
      .addItems(Arrays.asList("Binary Distribution"))
      .setType(ScrollableList.DROPDOWN) // currently supported DROPDOWN and LIST
      ;
   
-  cp5.begin(512 + 20, 100);
+  cp5.begin(height + 20, 100);
   
   cp5.addButton("run");
-  
   cp5.addButton("pause");
+  
+  cp5.addTextlabel("t");
+  
+  thread("ticks");
   
 }
 
@@ -39,7 +44,7 @@ void dist_selection(int n) {
   
   switch ((String) item.get("text")) {
     case "Binary Distribution":
-      g = new BinaryGrid(64, 1.2, 0.9, 0.1);
+      g = new BinaryGrid(64, 1.17, .9, 1, 1);
       g.distribute();
       setup = true;
       break;
@@ -48,7 +53,7 @@ void dist_selection(int n) {
 
 void run() {
   running = true;
-  lastTime = System.currentTimeMillis();
+  lastTime = System.nanoTime();
 }
 
 void pause() {
@@ -62,16 +67,24 @@ void draw() {
     g.paint();
   }
   
-  long time = System.currentTimeMillis();
-  current_time += time - lastTime;
-  lastTime = time;
+  fill(255);
+  text(Long.toString(t) + " updates", height + 20, height - 40);
+}
+
+void ticks() {
   
-  if (current_time >= millis) {
-    current_time -= millis;
-    if (running) {
-      g.step();
-    }
+  while (true) {
+    long time = System.nanoTime();
+    current_time += time - lastTime;
+    lastTime = time;
+    
+    if (current_time >= nanos) {
+      current_time = 0;
+      if (running) {
+        t++;
+        g.tick();
+      }
+    } 
   }
-  
   
 }
