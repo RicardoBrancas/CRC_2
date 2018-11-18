@@ -1,5 +1,19 @@
 import javafx.util.*;
 
+color loglerp(color c1, color c2, color c3, color c4, float amnt, float m1, float m2) {
+  
+  if (amnt > m1 && amnt < m2) {
+    return lerpColor(c2, c3, norm(amnt, m1, m2));
+  
+  } else if (amnt < m1) {
+    return lerpColor(c2, c1, abs(.001 * (amnt - m1) / (1 + abs(.001 * (amnt - m1)))));
+    
+  } else {
+    return lerpColor(c3, c4, abs(.001 * (amnt - m2) / (1 + abs(.001 * (amnt - m2)))));
+  
+  }
+}
+
 abstract class Grid {
   
   int n;
@@ -9,7 +23,7 @@ abstract class Grid {
   float r;
   
   float wealth[][];
-  boolean players[][];
+  boolean player[][];
   
   color rich = #5695E5;
   color poor = #F51D11;
@@ -21,7 +35,7 @@ abstract class Grid {
     ratio = (float) height / n;
     
     wealth = new float[n][n];
-    players = new boolean[n][n];
+    player = new boolean[n][n];
   }
   
   public void distribute() {
@@ -33,74 +47,20 @@ abstract class Grid {
   
   abstract public void distribute_players();
   
-  public void paint() {
-    float w_min = Float.POSITIVE_INFINITY, w_max = Float.NEGATIVE_INFINITY;
-    for (int i = 0; i < n; i++) {
-      for (int j = 0; j < n; j++) {
-        w_min = min(w_min, wealth[i][j]);
-        w_max = max(w_max, wealth[i][j]);
-      }
-    }
-    
+  public void paint() {    
+    ellipseMode(CORNER);
     
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < n; j++) {
         noStroke();
-        fill(lerpColor(rich, poor, norm(wealth[i][j], 0, 50)));
+        fill(loglerp(#0C1C74, #12A3DB, #F51616, #6C1313, wealth[i][j], 0, 50));
         rect(i * ratio, j * ratio, ratio, ratio);
         
-        ellipseMode(CORNER);
-        fill(players[i][j] ? #FFFFFF : #000000);
+        fill(player[i][j] ? #FFFFFF : #000000);
         ellipse((i + .3) * ratio, (j + .3) * ratio, ratio * .4, ratio * .4);
       }
     }
   }
   
-  public void tick() {
-    HashSet<Pair<Pair<Integer, Integer>, Pair<Integer, Integer>>> done = new HashSet<Pair<Pair<Integer, Integer>, Pair<Integer, Integer>>>();
-    
-    int i = Math.round(random(0, n-1));
-    int j = Math.round(random(0, n-1));
-    
-    for (int di = -1; di <= 1; di++) {
-      for (int dj = -1; dj <= 1; dj++) {
-        if (!(abs(di) == 1 && abs(dj) == 1)) {
-          int i2 = i + di;
-          int j2 = j + dj;
-          
-          if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-          
-            if (!done.contains(new Pair(new Pair(i, j), new Pair(i2, j2))) && !done.contains(new Pair(new Pair(i2, j2), new Pair(i, j)))) {
-              done.add(new Pair(new Pair(i, j), new Pair(i2, j2)));
-              
-              int count = 0;
-              float pool = 0;
-              
-              if(players[i][j]) {
-                pool += wealth[i][j];
-                wealth[i][j] *= 0;
-                count += 1;
-              }
-              
-              if (players[i2][j2]) {
-                pool += wealth[i2][j2];
-                wealth[i2][j2] *= 0;
-                count += 1;
-              }
-              
-              pool *= r;
-              
-              if(players[i][j]) {
-                wealth[i][j] += pool / count;
-              }
-              if (players[i2][j2]) {
-                wealth[i2][j2] += pool / count;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  
+  abstract public void tick();
 }
