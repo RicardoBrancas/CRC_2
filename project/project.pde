@@ -1,3 +1,5 @@
+import processing.pdf.*;
+
 import controlP5.*;
 import java.util.*;
 
@@ -6,7 +8,7 @@ ControlP5 cp5;
 Grid g;
 DropdownList d1;
 
-boolean setup = false, running = false;
+boolean setup = false, running = false, save_frame = true;
 int log_tps = 2;
 int tps = (int) Math.pow(10, log_tps);
 long nanos = (long) ((float) 1000000000 / tps);
@@ -22,15 +24,6 @@ void setup() {
   frameRate(60);
   
   cp5 = new ControlP5(this);
-  
-  cp5.addScrollableList("dist_selection")
-     .setSize(200, 100)
-     .setPosition(height + 20, 20)
-     .setBarHeight(20)
-     .setItemHeight(20)
-     .addItems(Arrays.asList("Binary Distribution"))
-     .setType(ScrollableList.DROPDOWN) // currently supported DROPDOWN and LIST
-     ;
   
   cp5.begin(height + 20, 100);
   
@@ -49,14 +42,18 @@ void setup() {
      .setRange(0, 8)
      .setNumberOfTickMarks(9)
      .setLabel("Speed")
+     .linebreak()
      ;
-  
-  cp5.addTextlabel("t");
-  
-  
+     
+  cp5.addButton("save_f")
+     .setLabel("Save Frame");
   
   thread("ticks");
   
+}
+
+void save_f() {
+  save_frame = true;
 }
 
 void disable() {
@@ -74,33 +71,12 @@ void enable() {
   cp5.get("pause").show();
 }
 
-void dist_selection(int n) {
-  selected = n;
-  
-  Map item = cp5.get(ScrollableList.class, "dist_selection").getItem(n);
-  
-  disable_binary();
-  
-  switch ((String) item.get("text")) {
-    case "Binary Distribution":
-      enable_binary();
-      break;
-  }
-  
-  t = 0;
-}
-
 void generate() {
-  Map item = cp5.get(ScrollableList.class, "dist_selection").getItem(selected);
   running = false;
   
-  switch ((String) item.get("text")) {
-    case "Binary Distribution":
-      g = new BinaryGrid(64, _r, _p, _R_1, _R_2);
-      g.distribute();
-      enable();
-      break;
-  }
+  g = new BinaryGrid(_n, _r, _p, _R_1, _R_2, _dyn, _smt);
+  g.distribute();
+  enable();
   
   t = 0;
 }
@@ -115,14 +91,54 @@ void pause() {
 }
 
 void draw() {
+  if (save_frame)
+    beginRecord(PDF, "frame-######.pdf");
+  
   background(30);
   
   if (setup) {
     g.paint();
   }
   
+  ellipseMode(CORNER);
+  noStroke();
+  
+  fill(veryPoor);
+  rect(width - height / 2, height - 200, 10, 10);
+  
+  fill(poor);
+  rect(width - height / 2, height - 180, 10, 10);
+  
+  fill(rich);
+  rect(width - height / 2, height - 160, 10, 10);
+  
+  fill(veryRich);
+  rect(width - height / 2, height - 140, 10, 10);
+  
+  fill(coop);
+  ellipse(width - height / 2, height - 120, 10, 10);
+  
+  fill(defect);
+  ellipse(width - height / 2, height - 100, 10, 10);
+  
+  
   fill(255);
+  text("very poor", width - height / 2 + 20, height - 200 + 8.25);
+  text("poor", width - height / 2 + 20, height - 180 + 8.25);
+  text("rich", width - height / 2 + 20, height - 160 + 8.25);
+  text("very rich", width - height / 2 + 20, height - 140 + 8.25);
+  text("cooperator", width - height / 2 + 20, height - 120 + 8.25);
+  text("defector", width - height / 2 + 20, height - 100 + 8.25);
+  
+  
   text(Long.toString(t) + " updates", height + 20, height - 40);
+  
+  text("b:" + Float.toString(2f/_r), height + 20, height - 80);
+  text("c:" + Float.toString(((float)_R_2 - _R_1) / _R_1), height + 20, height - 60);
+  
+  if (save_frame)
+    endRecord();
+  save_frame = false;
 }
 
 void ticks() {
@@ -136,6 +152,7 @@ void ticks() {
     
     if (current_time >= nanos) {
       current_time = 0;
+      
       if (running) {
         t++;
         g.tick();

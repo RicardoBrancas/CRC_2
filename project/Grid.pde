@@ -1,5 +1,13 @@
 import javafx.util.*;
 
+color veryPoor = #0C1C74;
+color poor = #12A3DB;
+color rich = #F51616;
+color veryRich = #6C1313;
+
+color coop = #FFFFFF;
+color defect = #000000;
+
 color loglerp(color c1, color c2, color c3, color c4, float amnt, float m1, float m2) {
   
   if (amnt > m1 && amnt < m2) {
@@ -25,9 +33,6 @@ abstract class Grid {
   float wealth[][];
   boolean player[][];
   
-  color rich = #5695E5;
-  color poor = #F51D11;
-  
   public Grid(int n, float r) {
     this.n = n;
     this.r = r;
@@ -49,14 +54,15 @@ abstract class Grid {
   
   public void paint() {    
     ellipseMode(CORNER);
+    noStroke();
     
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < n; j++) {
-        noStroke();
-        fill(loglerp(#0C1C74, #12A3DB, #F51616, #6C1313, wealth[i][j], 0, 50));
+        
+        fill(loglerp(veryPoor, poor, rich, veryRich, wealth[i][j], 1, 22));
         rect(i * ratio, j * ratio, ratio, ratio);
         
-        fill(player[i][j] ? #FFFFFF : #000000);
+        fill(player[i][j] ? coop : defect);
         ellipse((i + .3) * ratio, (j + .3) * ratio, ratio * .4, ratio * .4);
       }
     }

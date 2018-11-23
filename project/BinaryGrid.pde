@@ -1,15 +1,25 @@
+int _n;
 float _r, _p, _R_1, _R_2;
+boolean _dyn, _smt;
+
+Textlabel label_b, label_c;
 
 void setup_binary() {
+  cp5.addNumberbox("_n")
+     .setScrollSensitivity(1)
+     .setRange(10, 256)
+     .setValue(64)
+     ;
+  
   cp5.addNumberbox("_r")
      .setScrollSensitivity(.1)
      .setRange(0, 5)
-     .setValue(1.1)
+     .setValue(1.81)
      ;
   
   cp5.addNumberbox("_p")
      .setScrollSensitivity(.07)
-     .setValue(.9)
+     .setValue(.1)
      .setRange(0,1)
      ;
      
@@ -20,8 +30,17 @@ void setup_binary() {
      
   cp5.addNumberbox("_R_2")
      .setScrollSensitivity(1)
-     .setValue(40)
+     .setValue(22)
+     .linebreak()
      ;
+     
+  cp5.addToggle("_dyn")
+     .setValue(false)
+     ;
+     
+   cp5.addToggle("_smt")
+     .setValue(false)
+     .linebreak();
 }
 
 void enable_binary() {
@@ -34,110 +53,172 @@ void disable_binary() {
 
 class BinaryGrid extends Grid {
   
+  int visibility = 1;
+  int m = 10;
+  
   float R_1, R_2;
   float p;
   float b, c;
+  boolean dynamic;
   
-  public BinaryGrid(int n, float r, float p, float R_1, float R_2) {
+  float[][][][] payoff;
+  
+  public BinaryGrid(int n, float r, float p, float R_1, float R_2, boolean dyn, boolean smt) {
     super(n, r);
     
     this.R_1 = R_1;
     this.R_2 = R_2;
     this.p = p;
+    this.dynamic = dyn;
     
     b = 2f/r;
     c = (R_2 - R_1) / R_1;
+    
+    payoff = new float[][][][] { /* rich */
+                                   { /* rich */ 
+                                       { {2*c+1      , c          },
+                                         {b*c + b + c, b*c + b - 1}
+                                       },
+                                     /* poor */
+                                       { {c + 1  , c          },
+                                         {b*c + b, b*c + b - 1}
+                                       }},
+                                /* poor */
+                                   { /* rich */
+                                       { {c+1, 0  },
+                                         {b+c, b-1}
+                                       },
+                                     /* poor */ 
+                                       { {1, 0  },
+                                         {b, b-1}}}};
   }
   
   
   public void distribute_wealth() {
-     
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < n; j++) {
         
         if (random(1) < p)
-          wealth[i][j] = R_1;
+          wealth[i][j] = R_2;
           
         else
-          wealth[i][j] = R_2;
+          wealth[i][j] = R_1;
       }
     }
-    
   }
   
   public void distribute_players() {
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < n; j++) {
-          player[i][j] = random(1) > .5;
+          player[i][j] = random(1) < .5;
       }
     }
   }
   
-  public void tick() {
+  public float play(int i, int j) {
+    float A = 0;
     
+    for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
+      int i2 = e.getValue();
+      int j2 = e.getKey();
+      
+      if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
+        int richness_1 = wealth[i][j] == R_2 ? 0 : 1;
+        int richness_2 = wealth[i2][j2] == R_2 ? 0 : 1;
+        int coop_1 = player[i][j] ? 1 : 0;
+        int coop_2 = player[i2][j2] ? 1 : 0;
+        
+        A += payoff[richness_1][richness_2][coop_1][coop_2];
+      }
+      
+    }
+     
+    return A;
+  }
+  
+  public void tick() {
     int i = Math.round(random(0, n-1));
     int j = Math.round(random(0, n-1));
     
-    float x = 0;
-    float N = 0;
-    //float avgWealth = 0;
+    float num = 0;
+    float den = 0;
     
-    for (int i2 = i-2; i2 <= i+2; i2++) {
-      for (int j2 = j-2; j2 <= j+2; j2++) {
+    for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
+      int i2 = e.getValue();
+      int j2 = e.getKey();
+      
+      if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
         
-        if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-          N++;
-          
-          if (player[i2][j2])
-            x++;
-          
-          //avgWealth += wealth[i2][j2];
-        }
+        float Ai = play(i2, j2);
+        float si = player[i2][j2] ? 1 : 0;
+        
+        num += Math.pow(Ai, m) * si;
+        den += Math.pow(Ai, m);
+      
       }
     }
     
-    //avgWealth /= N;
+    float P = num / den;
     
-    //float c = abs((wealth[i][j] - avgWealth) / avgWealth);
-    //float b = 2/r;
+    player[i][j] = random(1) < P;
     
-    float c = ((float)_R_2 - (float)_R_1) / (float)_R_1;
-    float b = (float)2 / r;
+    //float x = 0;
+    //float N = 0;
+    //float minW = Float.MAX_VALUE, maxW = Float.MIN_VALUE;
     
-    float z = wealth[i][j] == _R_2 ? (c - b*c - b + 1) : (-b + 1);
+    //for (int i2 = i-visibility; i2 <= i+visibility; i2++) {
+    //  for (int j2 = j-visibility; j2 <= j+visibility; j2++) {
+        
+    //    if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
+    //      N++;
+    //      x += player[i2][j2];
+          
+    //      minW = min(minW, wealth[i2][j2]);
+    //      maxW = max(maxW, wealth[i2][j2]);
+    //    }
+    //  }
+    //}
     
-    float beta = 10;
+    //float c = (maxW - minW) / minW;
+    //float b = 2f / r;
     
-    float rand = random(1);
+    ////float z = wealth[i][j] >= ((maxW - minW)/2) ? -(c - b*c - b + 1) : -(-b + 1);
+    //float z = -c;
     
-    if (player[i][j] && (rand < (1f / (1f + Math.exp(beta * z)))))
-      player[i][j] = false;
-      
-    if (!player[i][j] && (rand < (1f / (1f + Math.exp(-beta * z)))))
-      player[i][j] = true;
+    //float beta = 10;
     
-    //for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
+    //float rand = random(1);
+    
+    //if (random(1) < .05) {
+    //  float nP = player[i][j] + random(-0.05, 0.05);
+    //  player[i][j] = constrain(nP, 0, 1);
+    //}
+    
+    //player[i][j] -= (1f / (1f + Math.exp(beta * z)));
+    
+    //if (dynamic) {
+    //  for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
     //  int i2 = e.getValue();
     //  int j2 = e.getKey();
       
     //  if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-    //    c = abs((wealth[i][j] - wealth[i2][j2]) / wealth[i2][j2]);
-    //    b = 2/r;
+    //    c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
+    //    b = 2f/r;
         
-    //    boolean p1 = player[i][j], p2 = player[i2][j2];
+    //    boolean p1 = random(1) < player[i][j], p2 = random(1) < player[i2][j2];
         
     //    if (p1 && p2) {
     //      wealth[i][j] += b - c;
     //      wealth[i2][j2] += b - c;
         
-    //    } else if (p1 && !p2) {
-          
-    //      wealth[i][j] -= c;
-    //      wealth[i2][j2] += 2*b;
-          
     //    } else if (!p1 && p2) {
           
-    //      wealth[i2][j2] += 2*b;
+    //      wealth[i][j] -= c;
+    //      wealth[i2][j2] += b;
+          
+    //    } else if (p1 && !p2) {
+          
+    //      wealth[i2][j2] += b;
     //      wealth[i][j] -= c;
           
     //    } else {
@@ -146,6 +227,7 @@ class BinaryGrid extends Grid {
     //    }
     //  }
     //} 
+    //}
   }
   
   
