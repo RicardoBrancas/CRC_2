@@ -12,8 +12,8 @@ void setup_binary() {
      ;
   
   cp5.addNumberbox("_r")
-     .setScrollSensitivity(.1)
-     .setRange(0, 5)
+     .setScrollSensitivity(.05)
+     .setRange(1, 2)
      .setValue(1.81)
      ;
   

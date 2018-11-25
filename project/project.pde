@@ -20,7 +20,7 @@ long t = 0;
 int selected = 0;
 
 void setup() {
-  size(1366, 768);
+  size(1366, 768, P2D);
   frameRate(60);
   
   cp5 = new ControlP5(this);
@@ -123,12 +123,12 @@ void draw() {
   
   
   fill(255);
-  text("very poor", width - height / 2 + 20, height - 200 + 8.25);
-  text("poor", width - height / 2 + 20, height - 180 + 8.25);
-  text("rich", width - height / 2 + 20, height - 160 + 8.25);
-  text("very rich", width - height / 2 + 20, height - 140 + 8.25);
-  text("cooperator", width - height / 2 + 20, height - 120 + 8.25);
-  text("defector", width - height / 2 + 20, height - 100 + 8.25);
+  text("very poor", width - height / 2 + 20, height - 200 + 8.5);
+  text("poor", width - height / 2 + 20, height - 180 + 8.5);
+  text("rich", width - height / 2 + 20, height - 160 + 8.5);
+  text("very rich", width - height / 2 + 20, height - 140 + 8.5);
+  text("cooperator", width - height / 2 + 20, height - 120 + 8.5);
+  text("defector", width - height / 2 + 20, height - 100 + 8.5);
   
   
   text(Long.toString(t) + " updates", height + 20, height - 40);

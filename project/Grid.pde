@@ -2,11 +2,11 @@ import javafx.util.*;
 
 color veryPoor = #0C1C74;
 color poor = #12A3DB;
-color rich = #F51616;
+color rich = #D81414;
 color veryRich = #6C1313;
 
-color coop = #FFFFFF;
-color defect = #000000;
+color coop = #FAC30D;
+color defect = #370C89;
 
 color loglerp(color c1, color c2, color c3, color c4, float amnt, float m1, float m2) {
   
