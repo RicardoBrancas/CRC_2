@@ -188,38 +188,38 @@ class BinaryGrid extends Grid {
     
     //player[i][j] -= (1f / (1f + Math.exp(beta * z)));
     
-    //if (dynamic) {
-    //  for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
-    //  int i2 = e.getValue();
-    //  int j2 = e.getKey();
+    if (dynamic) {
+      for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
+      int i2 = e.getValue();
+      int j2 = e.getKey();
       
-    //  if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-    //    c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
-    //    b = 2f/r;
+      if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
+        c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
+        b = 2f/r;
         
-    //    boolean p1 = player[i][j], p2 = player[i2][j2];
+        boolean p1 = player[i][j], p2 = player[i2][j2];
         
-    //    if (p1 && p2) {
-    //      wealth[i][j] += b - c;
-    //      wealth[i2][j2] += b - c;
+        if (p1 && p2) {
+          wealth[i][j] += b - c;
+          wealth[i2][j2] += b - c;
         
-    //    } else if (!p1 && p2) {
+        } else if (!p1 && p2) {
           
-    //      wealth[i][j] -= c;
-    //      wealth[i2][j2] += b;
+          wealth[i][j] -= c;
+          wealth[i2][j2] += b;
           
-    //    } else if (p1 && !p2) {
+        } else if (p1 && !p2) {
           
-    //      wealth[i2][j2] += b;
-    //      wealth[i][j] -= c;
+          wealth[i2][j2] += b;
+          wealth[i][j] -= c;
           
-    //    } else {
-    //      wealth[i][j] += 0;
-    //      wealth[i2][j2] += 0;
-    //    }
-    //  }
-    //} 
+        } else {
+          wealth[i][j] += 0;
+          wealth[i2][j2] += 0;
+        }
+      }
+    } 
     }
   }
   
-  
+}

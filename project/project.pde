@@ -1,8 +1,9 @@
-import processing.svg.*;
+import processing.pdf.*;
 
 import controlP5.*;
 import java.util.*;
 import java.text.SimpleDateFormat;
+import java.text.DecimalFormat;
 
 ControlP5 cp5;
 
@@ -22,11 +23,15 @@ long t = 0;
 
 int selected = 0;
 
+PGraphics pdf;
+DecimalFormat df = new DecimalFormat();
+
+
 void setup() {
   size(1366, 768, P2D);
   frameRate(60);
   
-  
+  df.setMaximumFractionDigits(2);
   
   cp5 = new ControlP5(this);
   
@@ -83,7 +88,10 @@ void generate() {
   g.distribute();
   enable();
   
-  start = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+  start = "p" + df.format(_p).replace(".","_");
+  start += "b" + df.format(2f/_r).replace(".","_");
+  start += "c" + df.format((_R_2 - _R_1) / _R_1).replace(".","_");
+  
   t = 0;
   save_frame = true;
 }
@@ -100,7 +108,8 @@ void pause() {
 void draw() {
   boolean saving = false;
   if (save_frame) {
-    beginRecord(SVG, start + "-" + Long.toString(t) + ".svg");
+    pdf = createGraphics(height, height, PDF, start + "-" + Long.toString(t) + ".pdf");
+    beginRecord(pdf);
     saving = true;
   }
   
