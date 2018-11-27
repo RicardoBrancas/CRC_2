@@ -1,7 +1,8 @@
-import processing.pdf.*;
+import processing.svg.*;
 
 import controlP5.*;
 import java.util.*;
+import java.text.SimpleDateFormat;
 
 ControlP5 cp5;
 
@@ -15,6 +16,8 @@ long nanos = (long) ((float) 1000000000 / tps);
 long current_time = 0;
 long lastTime;
 
+String start;
+
 long t = 0;
 
 int selected = 0;
@@ -22,6 +25,8 @@ int selected = 0;
 void setup() {
   size(1366, 768, P2D);
   frameRate(60);
+  
+  
   
   cp5 = new ControlP5(this);
   
@@ -78,7 +83,9 @@ void generate() {
   g.distribute();
   enable();
   
+  start = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
   t = 0;
+  save_frame = true;
 }
 
 void run() {
@@ -91,8 +98,11 @@ void pause() {
 }
 
 void draw() {
-  if (save_frame)
-    beginRecord(PDF, "frame-######.pdf");
+  boolean saving = false;
+  if (save_frame) {
+    beginRecord(SVG, start + "-" + Long.toString(t) + ".svg");
+    saving = true;
+  }
   
   background(30);
   
@@ -104,22 +114,22 @@ void draw() {
   noStroke();
   
   fill(veryPoor);
-  rect(width - height / 2, height - 200, 10, 10);
+  ellipse(width - height / 2, height - 200, 10, 10);
   
   fill(poor);
-  rect(width - height / 2, height - 180, 10, 10);
+  ellipse(width - height / 2, height - 180, 10, 10);
   
   fill(rich);
-  rect(width - height / 2, height - 160, 10, 10);
+  ellipse(width - height / 2, height - 160, 10, 10);
   
   fill(veryRich);
-  rect(width - height / 2, height - 140, 10, 10);
+  ellipse(width - height / 2, height - 140, 10, 10);
   
   fill(coop);
-  ellipse(width - height / 2, height - 120, 10, 10);
+  rect(width - height / 2, height - 120, 10, 10);
   
   fill(defect);
-  ellipse(width - height / 2, height - 100, 10, 10);
+  rect(width - height / 2, height - 100, 10, 10);
   
   
   fill(255);
@@ -136,9 +146,10 @@ void draw() {
   text("b:" + Float.toString(2f/_r), height + 20, height - 80);
   text("c:" + Float.toString(((float)_R_2 - _R_1) / _R_1), height + 20, height - 60);
   
-  if (save_frame)
+  if (saving) {
     endRecord();
-  save_frame = false;
+    save_frame = false;
+  }
 }
 
 void ticks() {
@@ -155,6 +166,10 @@ void ticks() {
       
       if (running) {
         t++;
+        
+        if (t == 1000 || t == 10000 || t == 100000 || t == 1000000 || t == 10000000 || t == 100000000)
+          save_frame = true;
+        
         g.tick();
       }
     } 

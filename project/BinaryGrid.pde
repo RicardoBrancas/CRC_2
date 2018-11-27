@@ -1,3 +1,5 @@
+import java.util.concurrent.ThreadLocalRandom;
+
 int _n;
 float _r, _p, _R_1, _R_2;
 boolean _dyn, _smt;
@@ -41,14 +43,6 @@ void setup_binary() {
    cp5.addToggle("_smt")
      .setValue(false)
      .linebreak();
-}
-
-void enable_binary() {
-  
-}
-
-void disable_binary() {
-  
 }
 
 class BinaryGrid extends Grid {
@@ -115,47 +109,45 @@ class BinaryGrid extends Grid {
     }
   }
   
+  public float ply(int i1, int j1, int i2, int j2) {
+    int richness_1 = wealth[i1][j1] == R_2 ? 0 : 1;
+    int richness_2 = wealth[i2][j2] == R_2 ? 0 : 1;
+    int coop_1 = player[i1][j1] ? 0 : 1;
+    int coop_2 = player[i2][j2] ? 0 : 1;
+    
+    return payoff[richness_1][richness_2][coop_1][coop_2];
+  }
+  
   public float play(int i, int j) {
     float A = 0;
     
     for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
-      int i2 = e.getValue();
-      int j2 = e.getKey();
-      
-      if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-        int richness_1 = wealth[i][j] == R_2 ? 0 : 1;
-        int richness_2 = wealth[i2][j2] == R_2 ? 0 : 1;
-        int coop_1 = player[i][j] ? 1 : 0;
-        int coop_2 = player[i2][j2] ? 1 : 0;
-        
-        A += payoff[richness_1][richness_2][coop_1][coop_2];
-      }
-      
+      int i2 = ((e.getKey() % n) + n) % n;
+      int j2 = ((e.getValue() % n) + n) % n;
+
+      A += ply(i, j, i2, j2);
     }
      
     return A;
   }
   
   public void tick() {
-    int i = Math.round(random(0, n-1));
-    int j = Math.round(random(0, n-1));
+    int i = ThreadLocalRandom.current().nextInt(0, n);
+    int j = ThreadLocalRandom.current().nextInt(0, n);
     
     float num = 0;
     float den = 0;
     
-    for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
-      int i2 = e.getValue();
-      int j2 = e.getKey();
-      
-      if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
+    List<Pair> neigh = Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1));
+    for (Pair<Integer, Integer> e : neigh) {
+      int i2 = ((e.getKey() % n) + n) % n;
+      int j2 = ((e.getValue() % n) + n) % n;
         
-        float Ai = play(i2, j2);
-        float si = player[i2][j2] ? 1 : 0;
-        
-        num += Math.pow(Ai, m) * si;
-        den += Math.pow(Ai, m);
+      float Ai = play(i2, j2);
+      float si = player[i2][j2] ? 1 : 0;
       
-      }
+      num += Math.pow(Ai, m) * si;
+      den += Math.pow(Ai, m);
     }
     
     float P = num / den;
@@ -205,7 +197,7 @@ class BinaryGrid extends Grid {
     //    c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
     //    b = 2f/r;
         
-    //    boolean p1 = random(1) < player[i][j], p2 = random(1) < player[i2][j2];
+    //    boolean p1 = player[i][j], p2 = player[i2][j2];
         
     //    if (p1 && p2) {
     //      wealth[i][j] += b - c;
@@ -227,8 +219,7 @@ class BinaryGrid extends Grid {
     //    }
     //  }
     //} 
-    //}
+    }
   }
   
   
-}
