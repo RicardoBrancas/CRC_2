@@ -88,7 +88,11 @@ void generate() {
   g.distribute();
   enable();
   
-  start = "p" + df.format(_p).replace(".","_");
+  
+  start = Integer.toString(_n);
+  start += _smt ? "SMT" : "";
+  start += _dyn ? "DYN" : "";
+  start += "p" + df.format(_p).replace(".","_");
   start += "b" + df.format(2f/_r).replace(".","_");
   start += "c" + df.format((_R_2 - _R_1) / _R_1).replace(".","_");
   

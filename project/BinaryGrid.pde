@@ -49,11 +49,12 @@ class BinaryGrid extends Grid {
   
   int visibility = 1;
   int m = 10;
+  float beta = 1e-5;
   
   float R_1, R_2;
   float p;
   float b, c;
-  boolean dynamic;
+  boolean dynamic, smooth;
   
   float[][][][] payoff;
   
@@ -64,6 +65,7 @@ class BinaryGrid extends Grid {
     this.R_2 = R_2;
     this.p = p;
     this.dynamic = dyn;
+    this.smooth = smt;
     
     b = 2f/r;
     c = (R_2 - R_1) / R_1;
@@ -110,12 +112,29 @@ class BinaryGrid extends Grid {
   }
   
   public float ply(int i1, int j1, int i2, int j2) {
-    int richness_1 = wealth[i1][j1] == R_2 ? 0 : 1;
-    int richness_2 = wealth[i2][j2] == R_2 ? 0 : 1;
-    int coop_1 = player[i1][j1] ? 0 : 1;
-    int coop_2 = player[i2][j2] ? 0 : 1;
+    if (!dynamic) {
+      int richness_1 = wealth[i1][j1] == R_2 ? 0 : 1;
+      int richness_2 = wealth[i2][j2] == R_2 ? 0 : 1;
+      int coop_1 = player[i1][j1] ? 0 : 1;
+      int coop_2 = player[i2][j2] ? 0 : 1;
+      
+      return payoff[richness_1][richness_2][coop_1][coop_2];
+    } else {
+        
+      if (player[i1][j1] && player[i2][j2])
+        return (wealth[i1][j1] + wealth[i2][j2]) / 2 * (r - 1);
+      
+      else if (player[i1][j1] && !player[i2][j2])
+        return (wealth[i1][j1] + wealth[i2][j2]) * (r - 1) * .1;
+      
+      else if (!player[i1][j1] && player[i2][j2])
+        return (wealth[i1][j1] + wealth[i2][j2]) * (r - 1) * .9;
+        
+      else
+        return 0;
+    }
     
-    return payoff[richness_1][richness_2][coop_1][coop_2];
+    
   }
   
   public float play(int i, int j) {
@@ -138,7 +157,23 @@ class BinaryGrid extends Grid {
     float num = 0;
     float den = 0;
     
-    List<Pair> neigh = Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1));
+    float fC = 0, fD = 0;
+    float Z = 0, k = 0;
+    
+    List<Pair> neigh;
+    
+    if (!smooth)
+      neigh = Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1));
+    else {
+      neigh = new ArrayList<Pair>();
+      for (int x = i - 2; x <= i + 2; x++){
+        for (int y = j - 2; y <= j + 2; y++) {
+          neigh.add(new Pair(x, y));
+        }
+      }
+    }
+    
+    
     for (Pair<Integer, Integer> e : neigh) {
       int i2 = ((e.getKey() % n) + n) % n;
       int j2 = ((e.getValue() % n) + n) % n;
@@ -148,11 +183,31 @@ class BinaryGrid extends Grid {
       
       num += Math.pow(Ai, m) * si;
       den += Math.pow(Ai, m);
+      
+      if (player[i2][j2])
+        fC += Ai;
+      else
+        fD += Ai;
+      
+      Z++;
+      k += si;
+      
+      if (dynamic) {
+        wealth[i][j] += ply(i, j, i2, j2);
+        wealth[i2][j2] += ply(i2, j2, i, j);
+      }
     }
     
     float P = num / den;
     
-    player[i][j] = random(1) < P;
+    if (!smooth)
+      player[i][j] = random(1) < P;
+    else {
+      //float rand = random(1);
+      
+      player[i][j] = (k / Z) * ((Z - k)/ Z) * Math.tanh(beta / 2 * (fC - fD)) > 0;
+        
+    }
     
     //float x = 0;
     //float N = 0;
@@ -188,38 +243,38 @@ class BinaryGrid extends Grid {
     
     //player[i][j] -= (1f / (1f + Math.exp(beta * z)));
     
-    if (dynamic) {
-      for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
-      int i2 = e.getValue();
-      int j2 = e.getKey();
+    //if (dynamic) {
+    //  for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
+    //  int i2 = e.getValue();
+    //  int j2 = e.getKey();
       
-      if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-        c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
-        b = 2f/r;
+    //  if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
+    //    c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
+    //    b = 2f/r;
         
-        boolean p1 = player[i][j], p2 = player[i2][j2];
+    //    boolean p1 = player[i][j], p2 = player[i2][j2];
         
-        if (p1 && p2) {
-          wealth[i][j] += b - c;
-          wealth[i2][j2] += b - c;
+    //    if (p1 && p2) {
+    //      wealth[i][j] += b - c;
+    //      wealth[i2][j2] += b - c;
         
-        } else if (!p1 && p2) {
+    //    } else if (!p1 && p2) {
           
-          wealth[i][j] -= c;
-          wealth[i2][j2] += b;
+    //      wealth[i][j] -= c;
+    //      wealth[i2][j2] += b;
           
-        } else if (p1 && !p2) {
+    //    } else if (p1 && !p2) {
           
-          wealth[i2][j2] += b;
-          wealth[i][j] -= c;
+    //      wealth[i2][j2] += b;
+    //      wealth[i][j] -= c;
           
-        } else {
-          wealth[i][j] += 0;
-          wealth[i2][j2] += 0;
-        }
-      }
-    } 
-    }
+    //    } else {
+    //      wealth[i][j] += 0;
+    //      wealth[i2][j2] += 0;
+    //    }
+    //  }
+    //} 
+    //}
   }
   
 }
