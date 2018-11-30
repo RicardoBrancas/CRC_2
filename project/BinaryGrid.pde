@@ -1,6 +1,7 @@
 import java.util.concurrent.ThreadLocalRandom;
 
 int _n;
+int _update_type;
 float _r, _p, _R_1, _R_2;
 boolean _dyn, _smt;
 
@@ -36,36 +37,48 @@ void setup_binary() {
      .linebreak()
      ;
      
-  cp5.addToggle("_dyn")
-     .setValue(false)
+  cp5.addScrollableList("_update_type")
+     .setPosition(height + 200, 140)
+     .setBarHeight(20)
+     .setItemHeight(20)
+     .addItems(Arrays.toString(UpdateType.values()).replaceAll("^.|.$", "").split(", "))
+     .close()
+     .setType(ScrollableList.DROPDOWN) // currently supported DROPDOWN and LIST
      ;
      
-   cp5.addToggle("_smt")
+  cp5.addToggle("_dyn")
      .setValue(false)
      .linebreak();
 }
 
+enum UpdateType {
+  ORIGINAL, REPLICATOR, SOFTMAX; 
+}
+
 class BinaryGrid extends Grid {
   
-  int visibility = 1;
+  int visibility = 2;
   int m = 10;
   float beta = 1e-5;
+  float eta = .5;
   
   float R_1, R_2;
   float p;
   float b, c;
-  boolean dynamic, smooth;
+  UpdateType update_type;
+  
+  boolean dynamic;
   
   float[][][][] payoff;
   
-  public BinaryGrid(int n, float r, float p, float R_1, float R_2, boolean dyn, boolean smt) {
+  public BinaryGrid(int n, float r, float p, float R_1, float R_2, boolean dyn, UpdateType type) {
     super(n, r);
     
     this.R_1 = R_1;
     this.R_2 = R_2;
     this.p = p;
     this.dynamic = dyn;
-    this.smooth = smt;
+    this.update_type = type;
     
     b = 2f/r;
     c = (R_2 - R_1) / R_1;
@@ -125,10 +138,10 @@ class BinaryGrid extends Grid {
         return (wealth[i1][j1] + wealth[i2][j2]) / 2 * (r - 1);
       
       else if (player[i1][j1] && !player[i2][j2])
-        return (wealth[i1][j1] + wealth[i2][j2]) * (r - 1) * .1;
+        return -(wealth[i1][j1] + wealth[i2][j2]) * (r - 1);
       
       else if (!player[i1][j1] && player[i2][j2])
-        return (wealth[i1][j1] + wealth[i2][j2]) * (r - 1) * .9;
+        return (wealth[i1][j1] + wealth[i2][j2]) * (r - 1);
         
       else
         return 0;
@@ -160,17 +173,22 @@ class BinaryGrid extends Grid {
     float fC = 0, fD = 0;
     float Z = 0, k = 0;
     
-    List<Pair> neigh;
+    List<Pair> neigh = null;
     
-    if (!smooth)
-      neigh = Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1));
-    else {
-      neigh = new ArrayList<Pair>();
-      for (int x = i - 2; x <= i + 2; x++){
-        for (int y = j - 2; y <= j + 2; y++) {
-          neigh.add(new Pair(x, y));
+    switch (update_type) {
+      case ORIGINAL:
+        neigh = Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1));
+        break;
+      
+      case SOFTMAX:
+      case REPLICATOR:
+        neigh = new ArrayList<Pair>();
+        for (int x = i - visibility; x <= i + visibility; x++){
+          for (int y = j - visibility; y <= j + visibility; y++) {
+            neigh.add(new Pair(x, y));
+          }
         }
-      }
+        break;
     }
     
     
@@ -198,83 +216,17 @@ class BinaryGrid extends Grid {
       }
     }
     
-    float P = num / den;
-    
-    if (!smooth)
-      player[i][j] = random(1) < P;
-    else {
-      //float rand = random(1);
+    switch (update_type) {
+      case ORIGINAL:
+        player[i][j] = random(1) < num / den;
+        break;
+      case SOFTMAX:
+        player[i][j] = random(1) < (Math.exp(eta * fC) / (Math.exp(eta * fC) + Math.exp(eta * fD)));
+        break;
+      case REPLICATOR:
+        player[i][j] = (k / Z) * ((Z - k)/ Z) * Math.tanh(beta / 2 * (fC - fD)) > 0;
+        break;
       
-      player[i][j] = (k / Z) * ((Z - k)/ Z) * Math.tanh(beta / 2 * (fC - fD)) > 0;
-        
     }
-    
-    //float x = 0;
-    //float N = 0;
-    //float minW = Float.MAX_VALUE, maxW = Float.MIN_VALUE;
-    
-    //for (int i2 = i-visibility; i2 <= i+visibility; i2++) {
-    //  for (int j2 = j-visibility; j2 <= j+visibility; j2++) {
-        
-    //    if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-    //      N++;
-    //      x += player[i2][j2];
-          
-    //      minW = min(minW, wealth[i2][j2]);
-    //      maxW = max(maxW, wealth[i2][j2]);
-    //    }
-    //  }
-    //}
-    
-    //float c = (maxW - minW) / minW;
-    //float b = 2f / r;
-    
-    ////float z = wealth[i][j] >= ((maxW - minW)/2) ? -(c - b*c - b + 1) : -(-b + 1);
-    //float z = -c;
-    
-    //float beta = 10;
-    
-    //float rand = random(1);
-    
-    //if (random(1) < .05) {
-    //  float nP = player[i][j] + random(-0.05, 0.05);
-    //  player[i][j] = constrain(nP, 0, 1);
-    //}
-    
-    //player[i][j] -= (1f / (1f + Math.exp(beta * z)));
-    
-    //if (dynamic) {
-    //  for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
-    //  int i2 = e.getValue();
-    //  int j2 = e.getKey();
-      
-    //  if (i2 >= 0 && i2 < n && j2 >= 0 && j2 < n) {
-    //    c = abs(wealth[i][j] - wealth[i2][j2]) / max(wealth[i][j], wealth[i2][j2]);
-    //    b = 2f/r;
-        
-    //    boolean p1 = player[i][j], p2 = player[i2][j2];
-        
-    //    if (p1 && p2) {
-    //      wealth[i][j] += b - c;
-    //      wealth[i2][j2] += b - c;
-        
-    //    } else if (!p1 && p2) {
-          
-    //      wealth[i][j] -= c;
-    //      wealth[i2][j2] += b;
-          
-    //    } else if (p1 && !p2) {
-          
-    //      wealth[i2][j2] += b;
-    //      wealth[i][j] -= c;
-          
-    //    } else {
-    //      wealth[i][j] += 0;
-    //      wealth[i2][j2] += 0;
-    //    }
-    //  }
-    //} 
-    //}
   }
-  
 }

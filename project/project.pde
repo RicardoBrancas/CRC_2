@@ -10,7 +10,7 @@ ControlP5 cp5;
 Grid g;
 DropdownList d1;
 
-boolean setup = false, running = false, save_frame = true;
+boolean setup = false, running = false, was_running = false, save_frame = true;
 int log_tps = 2;
 int tps = (int) Math.pow(10, log_tps);
 long nanos = (long) ((float) 1000000000 / tps);
@@ -46,7 +46,8 @@ void setup() {
      .hide();
      
   cp5.addButton("pause")
-     .hide();
+     .hide()
+     .linebreak();
   
   cp5.addSlider("log_tps")
      .setRange(0, 8)
@@ -84,13 +85,13 @@ void enable() {
 void generate() {
   running = false;
   
-  g = new BinaryGrid(_n, _r, _p, _R_1, _R_2, _dyn, _smt);
+  g = new BinaryGrid(_n, _r, _p, _R_1, _R_2, _dyn, UpdateType.values()[_update_type]);
   g.distribute();
   enable();
   
   
   start = Integer.toString(_n);
-  start += _smt ? "SMT" : "";
+  start += "u" + UpdateType.values()[_update_type].toString();
   start += _dyn ? "DYN" : "";
   start += "p" + df.format(_p).replace(".","_");
   start += "b" + df.format(2f/_r).replace(".","_");
@@ -162,6 +163,10 @@ void draw() {
   if (saving) {
     endRecord();
     save_frame = false;
+    if (was_running) {
+      running = true;
+      was_running = false;
+    }
   }
 }
 
@@ -180,8 +185,11 @@ void ticks() {
       if (running) {
         t++;
         
-        if (t == 1000 || t == 10000 || t == 100000 || t == 1000000 || t == 10000000 || t == 100000000)
+        if (t == 1000 || t == 10000 || t == 100000 || t == 1000000 || t == 10000000 || t == 100000000) {
           save_frame = true;
+          running = false;
+          was_running = true;
+        }
         
         g.tick();
       }
