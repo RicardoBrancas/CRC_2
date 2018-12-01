@@ -24,14 +24,13 @@ color loglerp(color c1, color c2, color c3, color c4, float amnt, float m1, floa
 
 abstract class Grid {
   
-  int n;
-  
-  float ratio;
-  
-  float r;
-  
   float wealth[][];
   boolean player[][];
+  
+  int n;
+  float r;
+  
+  float ratio;
   
   public Grid(int n, float r) {
     this.n = n;

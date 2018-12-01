@@ -8,24 +8,23 @@ import java.text.DecimalFormat;
 ControlP5 cp5;
 
 Grid g;
-DropdownList d1;
 
-boolean setup = false, running = false, was_running = false, save_frame = true;
+boolean setup       = false,
+        running     = false,
+        was_running = false,
+        save_frame  = false;
+
 int log_tps = 2;
 int tps = (int) Math.pow(10, log_tps);
 long nanos = (long) ((float) 1000000000 / tps);
 long current_time = 0;
 long lastTime;
+long t = 0;
 
 String start;
 
-long t = 0;
-
-int selected = 0;
-
 PGraphics pdf;
 DecimalFormat df = new DecimalFormat();
-
 
 void setup() {
   size(1366, 768, P2D);
@@ -34,7 +33,6 @@ void setup() {
   df.setMaximumFractionDigits(2);
   
   cp5 = new ControlP5(this);
-  
   cp5.begin(height + 20, 100);
   
   setup_binary();
@@ -60,7 +58,6 @@ void setup() {
      .setLabel("Save Frame");
   
   thread("ticks");
-  
 }
 
 void save_f() {
@@ -82,13 +79,32 @@ void enable() {
   cp5.get("pause").show();
 }
 
+void run() {
+  running = true;
+  lastTime = System.nanoTime();
+}
+
+void pause() {
+  running = false;
+}
+
 void generate() {
   running = false;
   
-  g = new BinaryGrid(_n, _r, _p, _R_1, _R_2, _dyn, UpdateType.values()[_update_type]);
+  switch (UpdateType.values()[_update_type]) {
+    case ORIGINAL:
+      g = new OriginalGrid(_n, _r, _p, _R_1, _R_2, _dyn);
+      break;
+    case REPLICATOR:
+      g = new ReplicatorGrid(_n, _r, _p, _R_1, _R_2, _dyn);
+      break;
+   case SOFTMAX:
+      g = new SoftmaxGrid(_n, _r, _p, _R_1, _R_2, _dyn);
+      break;
+  }
+  
   g.distribute();
   enable();
-  
   
   start = Integer.toString(_n);
   start += "u" + UpdateType.values()[_update_type].toString();
@@ -99,15 +115,6 @@ void generate() {
   
   t = 0;
   save_frame = true;
-}
-
-void run() {
-  running = true;
-  lastTime = System.nanoTime();
-}
-
-void pause() {
-  running = false;
 }
 
 void draw() {
@@ -154,7 +161,6 @@ void draw() {
   text("cooperator", width - height / 2 + 20, height - 120 + 8.5);
   text("defector", width - height / 2 + 20, height - 100 + 8.5);
   
-  
   text(Long.toString(t) + " updates", height + 20, height - 40);
   
   text("b:" + Float.toString(2f/_r), height + 20, height - 80);
@@ -185,7 +191,7 @@ void ticks() {
       if (running) {
         t++;
         
-        if (t == 1000 || t == 10000 || t == 100000 || t == 1000000 || t == 10000000 || t == 100000000) {
+        if (t == 1000 || t == 10000 || t == 100000 || t == 1000000 || t == 10000000 || t == 100000000 || t == 1000000000) {
           save_frame = true;
           running = false;
           was_running = true;

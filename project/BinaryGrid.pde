@@ -3,7 +3,7 @@ import java.util.concurrent.ThreadLocalRandom;
 int _n;
 int _update_type;
 float _r, _p, _R_1, _R_2;
-boolean _dyn, _smt;
+boolean _dyn;
 
 Textlabel label_b, label_c;
 
@@ -43,7 +43,7 @@ void setup_binary() {
      .setItemHeight(20)
      .addItems(Arrays.toString(UpdateType.values()).replaceAll("^.|.$", "").split(", "))
      .close()
-     .setType(ScrollableList.DROPDOWN) // currently supported DROPDOWN and LIST
+     .setType(ScrollableList.DROPDOWN)
      ;
      
   cp5.addToggle("_dyn")
@@ -55,30 +55,24 @@ enum UpdateType {
   ORIGINAL, REPLICATOR, SOFTMAX; 
 }
 
-class BinaryGrid extends Grid {
-  
-  int visibility = 2;
-  int m = 10;
-  float beta = 1e-5;
-  float eta = .5;
+abstract class BinaryGrid<T> extends Grid {
   
   float R_1, R_2;
+  int m = 10;
   float p;
   float b, c;
-  UpdateType update_type;
   
   boolean dynamic;
   
   float[][][][] payoff;
   
-  public BinaryGrid(int n, float r, float p, float R_1, float R_2, boolean dyn, UpdateType type) {
+  public BinaryGrid(int n, float r, float p, float R_1, float R_2, boolean dyn) {
     super(n, r);
     
     this.R_1 = R_1;
     this.R_2 = R_2;
     this.p = p;
     this.dynamic = dyn;
-    this.update_type = type;
     
     b = 2f/r;
     c = (R_2 - R_1) / R_1;
@@ -114,6 +108,18 @@ class BinaryGrid extends Grid {
           wealth[i][j] = R_1;
       }
     }
+    
+    //noiseSeed(ThreadLocalRandom.current().nextLong());
+    //for (int i = 0; i < n; i++) {
+    //  for (int j = 0; j < n; j++) {
+        
+    //    if (noise(.1f * i, .1f *  j) < .5)
+    //      wealth[i][j] = R_2;
+          
+    //    else
+    //      wealth[i][j] = R_1;
+    //  }
+    //}
   }
   
   public void distribute_players() {
@@ -146,14 +152,12 @@ class BinaryGrid extends Grid {
       else
         return 0;
     }
-    
-    
   }
   
-  public float play(int i, int j) {
-    float A = 0;
+  public double play(int i, int j) {
+    double A = 0;
     
-    for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1))) {
+    for (Pair<Integer, Integer> e : Arrays.asList(new Pair(i, j), new Pair(i-1, j), new Pair(i+1, j), new Pair(i, j+1), new Pair(i, j-1))) {
       int i2 = ((e.getKey() % n) + n) % n;
       int j2 = ((e.getValue() % n) + n) % n;
 
@@ -163,52 +167,22 @@ class BinaryGrid extends Grid {
     return A;
   }
   
+  public abstract List<Pair> neighbours(int i, int j);
+  public abstract T step(int i, int j);
+  public abstract void update(Collection<? extends T> values, int i, int j);
+  
   public void tick() {
     int i = ThreadLocalRandom.current().nextInt(0, n);
     int j = ThreadLocalRandom.current().nextInt(0, n);
     
-    float num = 0;
-    float den = 0;
+    List<T> values = new ArrayList<T>();
     
-    float fC = 0, fD = 0;
-    float Z = 0, k = 0;
-    
-    List<Pair> neigh = null;
-    
-    switch (update_type) {
-      case ORIGINAL:
-        neigh = Arrays.asList(new Pair(i, j), new Pair(i-1, j-1), new Pair(i+1, j-1), new Pair(i-1, j+1), new Pair(i+1, j+1));
-        break;
-      
-      case SOFTMAX:
-      case REPLICATOR:
-        neigh = new ArrayList<Pair>();
-        for (int x = i - visibility; x <= i + visibility; x++){
-          for (int y = j - visibility; y <= j + visibility; y++) {
-            neigh.add(new Pair(x, y));
-          }
-        }
-        break;
-    }
-    
-    
+    List<Pair> neigh = neighbours(i,j);
     for (Pair<Integer, Integer> e : neigh) {
       int i2 = ((e.getKey() % n) + n) % n;
       int j2 = ((e.getValue() % n) + n) % n;
-        
-      float Ai = play(i2, j2);
-      float si = player[i2][j2] ? 1 : 0;
       
-      num += Math.pow(Ai, m) * si;
-      den += Math.pow(Ai, m);
-      
-      if (player[i2][j2])
-        fC += Ai;
-      else
-        fD += Ai;
-      
-      Z++;
-      k += si;
+      values.add(step(i2, j2));
       
       if (dynamic) {
         wealth[i][j] += ply(i, j, i2, j2);
@@ -216,17 +190,6 @@ class BinaryGrid extends Grid {
       }
     }
     
-    switch (update_type) {
-      case ORIGINAL:
-        player[i][j] = random(1) < num / den;
-        break;
-      case SOFTMAX:
-        player[i][j] = random(1) < (Math.exp(eta * fC) / (Math.exp(eta * fC) + Math.exp(eta * fD)));
-        break;
-      case REPLICATOR:
-        player[i][j] = (k / Z) * ((Z - k)/ Z) * Math.tanh(beta / 2 * (fC - fD)) > 0;
-        break;
-      
-    }
+    update(values, i, j);
   }
 }
